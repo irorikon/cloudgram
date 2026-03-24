@@ -6,36 +6,36 @@ import { TelegramResponse } from '../types/telegram';
  * 带重试机制的 fetch 请求
  */
 async function fetchWithRetry(url: string, options: RequestInit, maxRetries: number = 3): Promise<Response> {
-  let lastError: Error | null = null;
-  
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      const response = await fetch(url, options);
-      return response;
-    } catch (err) {
-      lastError = err instanceof Error ? err : new Error(String(err));
-      console.warn(`Fetch attempt ${attempt} failed:`, lastError.message);
-      
-      // 如果不是最后一次尝试，等待后重试（指数退避）
-      if (attempt < maxRetries) {
-        // 检查是否是网络连接相关错误
-        const isNetworkError = lastError.message.includes('Network connection lost') ||
-                              lastError.message.includes('network error') ||
-                              lastError.message.includes('timeout') ||
-                              lastError.message.includes('Timeout');
-        
-        if (isNetworkError) {
-          await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt - 1) * 1000));
-          continue;
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            const response = await fetch(url, options);
+            return response;
+        } catch (err) {
+            lastError = err instanceof Error ? err : new Error(String(err));
+            console.warn(`Fetch attempt ${attempt} failed:`, lastError.message);
+
+            // 如果不是最后一次尝试，等待后重试（指数退避）
+            if (attempt < maxRetries) {
+                // 检查是否是网络连接相关错误
+                const isNetworkError = lastError.message.includes('Network connection lost') ||
+                    lastError.message.includes('network error') ||
+                    lastError.message.includes('timeout') ||
+                    lastError.message.includes('Timeout');
+
+                if (isNetworkError) {
+                    await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt - 1) * 1000));
+                    continue;
+                }
+            }
+
+            // 非网络错误或最后一次尝试失败，直接抛出
+            throw lastError;
         }
-      }
-      
-      // 非网络错误或最后一次尝试失败，直接抛出
-      throw lastError;
     }
-  }
-  
-  throw lastError!;
+
+    throw lastError!;
 }
 
 /**
@@ -225,6 +225,30 @@ export async function isTelegramApiAvailable(botToken: string): Promise<boolean>
     if (!botToken?.trim()) throw new Error('botToken is required');
 
     const url = `https://api.telegram.org/bot${botToken}/getMe`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5秒超时
+
+    try {
+        const response = await fetch(url, {
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        return response.ok;
+    } catch (err) {
+        clearTimeout(timeoutId);
+        // 网络错误或超时时返回 false，表示 API 不可用
+        return false;
+    }
+}
+
+/**
+ * 检测 Channel 是否可用
+ */
+export async function checkTelegramChannel(botToken: string, channelId: string): Promise<boolean> {
+    if (!botToken?.trim()) throw new Error('botToken is required');
+    if (!channelId?.trim()) throw new Error('channelId is required');
+
+    const url = `https://api.telegram.org/bot${botToken}/getChat?chat_id=${channelId}`;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000); // 5秒超时
 

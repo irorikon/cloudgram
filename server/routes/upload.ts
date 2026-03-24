@@ -4,6 +4,7 @@ import { success, error } from "../types/response";
 import { createTempChunkRecord, transferTempChunksToFile, getTotalChunksByUploadId, cleanTempChunkRecordsByUploadId } from "../services/chunk";
 import { uploadFileToTelegram } from "../services/telegram";
 import { createFile } from "../services/file";
+import { updateTGChannelMessageId } from "../services/channel";
 
 const upload = new Hono<{ Bindings: Env }>();
 
@@ -18,6 +19,7 @@ upload.post("/chunk", async (c) => {
     // 调试：输出所有 FormData 键值对
 
     // 获取必要的参数
+    const channelId = typeof formData.channelId === "string" ? formData.channelId.trim() : null;
     const uploadId = typeof formData.uploadId === "string" ? formData.uploadId.trim() : null;
     const chunkIndexStr = typeof formData.chunkIndex === "string" ? formData.chunkIndex : null;
     const chunkSizeStr = typeof formData.chunkSize === "string" ? formData.chunkSize : null;
@@ -27,7 +29,7 @@ upload.post("/chunk", async (c) => {
     const chunkSize = chunkSizeStr ? parseInt(chunkSizeStr) : null;
 
     // 验证必要参数
-    if (uploadId === null || chunkIndex === null || chunkSize === null) {
+    if (channelId === null || uploadId === null || chunkIndex === null || chunkSize === null) {
         return c.json(error("Missing required parameters: uploadId, chunkIndex, chunkSize"), 400);
     }
 
@@ -42,8 +44,8 @@ upload.post("/chunk", async (c) => {
     // 类型守卫：检查是否为有效的文件对象
     const isValidFile = (obj: any): obj is { name: string; stream: () => ReadableStream } => {
         return obj && typeof obj === 'object' &&
-               typeof obj.name === 'string' &&
-               typeof obj.stream === 'function';
+            typeof obj.name === 'string' &&
+            typeof obj.stream === 'function';
     };
 
     if (!file || !isValidFile(file)) {
@@ -57,7 +59,7 @@ upload.post("/chunk", async (c) => {
         // 上传文件到 Telegram - 现在内部已有重试机制
         const telegramResponse = await uploadFileToTelegram(
             c.env.TELEGRAM_BOT_TOKEN,
-            c.env.TELEGRAM_CHAT_ID,
+            channelId,
             file.stream(),
             telegramFileName,
             true
@@ -84,6 +86,9 @@ upload.post("/chunk", async (c) => {
             telegramMessageId
         );
 
+        // 更新 Channel 记录
+        await updateTGChannelMessageId(c.env.CloudGramDB, channelId, telegramMessageId);
+
         return c.json(success({
             chunkId: tempChunk.id,
             uploadId: tempChunk.upload_id,
@@ -95,8 +100,8 @@ upload.post("/chunk", async (c) => {
         console.error("Failed to upload chunk:", err);
         // 检查是否是网络连接错误，如果是，返回特定的错误信息以便前端重试
         const errorMessage = err instanceof Error ? err.message : String(err);
-        if (errorMessage.includes('Network connection lost') || 
-            errorMessage.includes('network error') || 
+        if (errorMessage.includes('Network connection lost') ||
+            errorMessage.includes('network error') ||
             errorMessage.includes('timeout')) {
             return c.json(error("Network connection lost. Please retry the upload."), 503);
         }
@@ -111,6 +116,7 @@ upload.post("/chunk", async (c) => {
  * @param {string} parentId - 父级目录 ID
  * @param {number} size - 文件大小
  * @param {string} mimeType - 文件 MIME 类型
+ * @param {string} channelId - 频道 ID
  * @param {number} totalChunks - 分片总数
  */
 upload.post("/merge", async (c) => {
@@ -125,7 +131,10 @@ upload.post("/merge", async (c) => {
     if (!uploadId) {
         return c.json(error("Invalid uploadId"), 400);
     }
-
+    const channelId = typeof body.channelId === "string" ? body.channelId : null;
+    if (!channelId) {
+        return c.json(error("Invalid channelId"), 400);
+    }
     const filename = typeof body.filename === "string" ? body.filename : null;
     if (!filename) {
         return c.json(error("Invalid filename"), 400);
@@ -152,6 +161,7 @@ upload.post("/merge", async (c) => {
             parentId,
             false, // is_dir = false (file)
             size,
+            channelId,
             mimeType || "application/octet-stream"
         );
 
@@ -174,6 +184,7 @@ upload.post("/merge", async (c) => {
 /**
  * 上传失败后清理上传失败处理程序
  * @param {string} uploadId - 上传 ID
+ * @param {string} channelId - 频道 ID
  */
 upload.post('/cleanup', async (c) => {
     // 解析 JSON body
@@ -186,7 +197,11 @@ upload.post('/cleanup', async (c) => {
     if (!uploadId) {
         return c.json(error("Invalid request body"), 400);
     }
-    const deletedCount = await cleanTempChunkRecordsByUploadId(c.env.CloudGramDB, uploadId, c.env.TELEGRAM_BOT_TOKEN, c.env.TELEGRAM_CHAT_ID);
+    const channelId = typeof body.channelId === "string" ? body.channelId.trim() : "";
+    if (!channelId) {
+        return c.json(error("Invalid request body"), 400);
+    }
+    const deletedCount = await cleanTempChunkRecordsByUploadId(c.env.CloudGramDB, uploadId, c.env.TELEGRAM_BOT_TOKEN, channelId);
     return c.json(success({ deletedCount }, "Upload session cleaned up successfully"), 200);
 })
 

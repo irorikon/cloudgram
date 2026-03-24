@@ -6,9 +6,9 @@
 
     <div class="upload-content">
       <template v-if="!currentUploadingFile">
-        <n-upload ref="uploadRef" v-model:file-list="fileListRef"
-          :show-file-list="false" :multiple="true" :directory-dnd="true" :custom-request="handleCustomRequest"
-          @finish="handleUploadFinish" @change="handleFileChange" accept="*">
+        <n-upload ref="uploadRef" v-model:file-list="fileListRef" :show-file-list="false" :multiple="true"
+          :directory-dnd="true" :custom-request="handleCustomRequest" @finish="handleUploadFinish"
+          @change="handleFileChange" accept="*">
           <n-upload-dragger>
             <div style="margin-bottom: 12px">
               <n-icon size="48" :depth="3">
@@ -24,17 +24,12 @@
           </n-upload-dragger>
         </n-upload>
       </template>
-      
+
       <!-- 自定义上传状态显示 -->
       <div v-else class="upload-status">
         <span class="uploading-filename">正在上传：{{ currentUploadingFile.name }}</span>
-        <n-progress 
-          :percentage="currentUploadingFile.percentage || 0" 
-          :indicator-placement="'inside'"
-          :show-indicator="true"
-          :height="20"
-          class="upload-progress"
-        />
+        <n-progress :percentage="currentUploadingFile.percentage || 0" :indicator-placement="'inside'"
+          :show-indicator="true" :height="20" class="upload-progress" />
         <div v-if="remainingFilesCount > 0 && nextFileName" class="remaining-info">
           <span>剩余项目({{ remainingFilesCount }})</span>
           <span>{{ nextFileName }}</span>
@@ -54,8 +49,8 @@ import { NUpload, NUploadDragger, NIcon, NText, NP, NButton, useMessage, NProgre
 // 保留必要的类型导入，因为这些类型没有在自动导入中配置
 import type { UploadFileInfo, UploadCustomRequestOptions } from 'naive-ui';
 import { CloudUploadOutline } from '@vicons/ionicons5';
-import { useUserStore } from '@/store/user';
 import { useBreadcrumbStore } from '@/store/breadcrumb';
+import { useChannelStore } from '@/store/channel';
 import { uploadChunk, mergeFile, cleanupUploadSession } from '@/api/upload';
 import { exists } from '@/api/file';
 
@@ -72,8 +67,16 @@ const CHUNK_SIZE = 20 * 1024 * 1024; // 20MB 分片大小
 
 // 组件引用
 const message = useMessage();
-const userStore = useUserStore();
 const breadcrumbStore = useBreadcrumbStore();
+
+
+// 从 channel store 获取 channelId
+const channelStore = useChannelStore();
+const channel = channelStore.getChannel;
+if (!channelStore.hasChannel || typeof channel !== 'object' || !('channelId' in channel)) {
+  throw new Error('Channel not available');
+}
+const channelId = channel.channelId;
 
 // 添加文件列表状态管理（内部使用）
 const fileListRef = ref<UploadFileInfo[]>([]);
@@ -127,7 +130,7 @@ const handleFileChange = (data: { file: UploadFileInfo; fileList: UploadFileInfo
   });
   // 更新文件列表
   fileListRef.value = newFileList;
-  
+
   // 更新当前正在上传的文件
   const uploadingFile = fileListRef.value.find(file => file.status === 'uploading');
   currentUploadingFile.value = uploadingFile || null;
@@ -136,7 +139,7 @@ const handleFileChange = (data: { file: UploadFileInfo; fileList: UploadFileInfo
 const handleCustomRequest = async (options: UploadCustomRequestOptions) => {
   // 将上传任务添加到队列
   uploadQueue.value.push(options);
-  
+
   // 如果没有正在上传，则开始处理队列
   if (!isUploading.value) {
     processUploadQueue();
@@ -216,7 +219,7 @@ const processUploadQueue = async () => {
       const uploadFile = file.file as File;
       const fileSize = uploadFile.size;
       const totalChunks = fileSize <= CHUNK_SIZE ? 1 : Math.ceil(fileSize / CHUNK_SIZE);
-      
+
       // 前端自己生成 uploadId，使用兼容性更好的方法
       const uploadId = generateUploadId();
 
@@ -266,14 +269,14 @@ const generateUploadId = (): string => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
   }
-  
+
   // 方法2: 使用 crypto.getRandomValues (较老的浏览器)
   if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
     const array = new Uint8Array(16);
     crypto.getRandomValues(array);
     return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
   }
-  
+
   // 方法3: 使用 Date.now() + Math.random() 作为最后的备选方案
   return `upload-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 };
@@ -303,9 +306,9 @@ const uploadSmallFileWithId = async (file: File, uploadId: string, parentId: str
     if (uploadFileInfo) {
       uploadFileInfo.percentage = 0;
     }
-    
+
     // 上传文件分片 - request.upload 已经自动返回 data 字段
-    await uploadChunk(uploadId, 1, 0, file.size, file);
+    await uploadChunk(uploadId, 1, 0, file.size, file, channelId);
 
     // 更新进度为 100%
     if (uploadFileInfo) {
@@ -319,7 +322,8 @@ const uploadSmallFileWithId = async (file: File, uploadId: string, parentId: str
       parentId,
       file.size,
       file.type || 'application/octet-stream',
-      1
+      1,
+      channelId
     );
 
     message.success(`文件 ${file.name} 上传成功`);
@@ -328,7 +332,7 @@ const uploadSmallFileWithId = async (file: File, uploadId: string, parentId: str
     const isCleanedUp = (file as any).isCleanedUp;
     if (!isCleanedUp) {
       try {
-        await cleanupUploadSession(uploadId);
+        await cleanupUploadSession(uploadId, channelId);
         (file as any).isCleanedUp = true;
       } catch (cleanupError) {
         console.error('Failed to cleanup upload session:', cleanupError);
@@ -354,7 +358,8 @@ const uploadLargeFileWithId = async (file: File, uploadId: string, parentId: str
         totalChunks,
         chunkIndex,
         chunk.size,
-        new File([chunk], `${file.name}.${String(chunkIndex + 1).padStart(3, '0')}`, { type: file.type })
+        new File([chunk], `${file.name}.${String(chunkIndex + 1).padStart(3, '0')}`, { type: file.type }),
+        channelId
       );
 
       // 更新进度
@@ -370,7 +375,8 @@ const uploadLargeFileWithId = async (file: File, uploadId: string, parentId: str
       parentId,
       file.size,
       file.type || 'application/octet-stream',
-      totalChunks
+      totalChunks,
+      channelId
     );
 
     message.success(`文件 ${file.name} 上传成功`);
@@ -379,7 +385,7 @@ const uploadLargeFileWithId = async (file: File, uploadId: string, parentId: str
     const isCleanedUp = (file as any).isCleanedUp;
     if (!isCleanedUp) {
       try {
-        await cleanupUploadSession(uploadId);
+        await cleanupUploadSession(uploadId, channelId);
         (file as any).isCleanedUp = true;
       } catch (cleanupError) {
         console.error('Failed to cleanup upload session:', cleanupError);

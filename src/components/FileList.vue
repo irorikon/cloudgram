@@ -1,7 +1,8 @@
 <template>
   <div class="file-list" @contextmenu.prevent="handleGlobalContextMenu">
     <n-data-table ref="dataTableRef" :columns="columns" :data="files" :row-key="getRowKey" :bordered="false"
-      :loading="loading" size="medium" @update:checked-row-keys="handleSelectionChange" :min-height="minHeight" />
+      :loading="loading" size="medium" @update:checked-row-keys="handleSelectionChange"
+      :style="{ height: minHeight }" />
   </div>
 
   <!-- 右键菜单 -->
@@ -11,7 +12,7 @@
 
 <script setup lang="ts">
 import { ref, computed, h, onMounted } from 'vue';
-import { useMessage, NIcon, NDataTable, NDropdown } from 'naive-ui';
+import { NIcon, NDataTable, NDropdown } from 'naive-ui';
 import {
   AddOutline,
   PencilOutline,
@@ -45,12 +46,9 @@ interface Emits {
 const emit = defineEmits<Emits>();
 
 // Naive UI hooks
-const message = useMessage();
 const breadcrumbStore = useBreadcrumbStore();
 
 // 响应式数据
-const contextMenuRef = ref();
-const dataTableRef = ref();
 const showContextMenu = ref(false);
 const contextMenuX = ref(0);
 const contextMenuY = ref(0);
@@ -69,6 +67,7 @@ const columns = computed(() => [
     title: '文件名',
     key: 'name',
     width: 300,
+    ellipsis: true,
     align: 'left' as const,
     render: (row: FileItem) => {
       return h('div', {
@@ -188,7 +187,6 @@ const updateContainerHeight = () => {
     viewportHeight - headerHeight - breadcrumbHeight - footerHeight - margins - filelistheader,
     300
   );
-
   // 设置容器高度
   minHeight.value = `${availableHeight}px`;
 };

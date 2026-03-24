@@ -7,6 +7,7 @@ import file from './routes/file'
 import chunk from './routes/chunk'
 import system from './routes/system'
 import upload from './routes/upload'
+import channel from './routes/channel'
 import { error as errorResp } from './types/response'
 import type { Env } from './types/env'
 
@@ -76,6 +77,13 @@ app.use('/upload/*', (c, next) => {
   })
   return jwtMiddleware(c, next)
 })
+app.use('/channel/*', (c, next) => {
+  const jwtMiddleware = jwt({
+    secret: c.env.JWT_SECRET,
+    alg: 'HS256',
+  })
+  return jwtMiddleware(c, next)
+})
 app.use('/system/status', (c, next) => {
   const jwtMiddleware = jwt({
     secret: c.env.JWT_SECRET,
@@ -86,6 +94,7 @@ app.use('/system/status', (c, next) => {
 app.route('/file', file)
 app.route('/chunk', chunk)
 app.route('/upload', upload)
+app.route('/channel', channel)
 
 // 挂载公开路由（登录接口）
 app.route('/auth', auth)

@@ -4,13 +4,14 @@ import { RequestError } from '@/types/request'
 /**
  * 上传文件分片 - 带重试机制
  */
-export async function uploadChunk(uploadId: string, totalChunks: number, chunkIndex: number, chunkSize: number, file: File) {
+export async function uploadChunk(uploadId: string, totalChunks: number, chunkIndex: number, chunkSize: number, file: File, channelId: string) {
   const formData = new FormData()
   formData.append('uploadId', uploadId)
   formData.append('totalChunks', totalChunks.toString())
   formData.append('chunkIndex', chunkIndex.toString())
   formData.append('chunkSize', chunkSize.toString())
   formData.append('file', file, file.name)
+  formData.append('channelId', channelId)
 
   // 增加超时时间到 120 秒，适应大文件上传和网络不稳定情况
   // 添加重试机制，最多重试3次
@@ -62,20 +63,21 @@ export async function uploadChunk(uploadId: string, totalChunks: number, chunkIn
 /**
  * 合并文件
  */
-export function mergeFile(uploadId: string, filename: string, parentId: string | null, size: number, mimeType: string, uploadedChunks: number) {
+export function mergeFile(uploadId: string, filename: string, parentId: string | null, size: number, mimeType: string, uploadedChunks: number, channelId: string) {
   return request.post('/api/upload/merge', {
     uploadId,
     filename,
     parentId,
     size,
     mimeType,
-    uploadedChunks
+    uploadedChunks,
+    channelId
   })
 }
 
 /**
  * 清理上传会话
  */
-export function cleanupUploadSession(uploadId: string) {
-  return request.post('/api/upload/cleanup', { uploadId })
+export function cleanupUploadSession(uploadId: string, channelId: string) {
+  return request.post('/api/upload/cleanup', { uploadId, channelId })
 }

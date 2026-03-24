@@ -230,12 +230,6 @@ const handleLogin = async () => {
 
     const response = await login(loginForm);
 
-    console.log('登录成功:', {
-      username: response.user?.username,
-      tokenLength: response.token?.length,
-      expiresAt: response.expiresAt
-    });
-
     loadingBar.finish();
 
   } catch (error: any) {

@@ -34,21 +34,37 @@
                 </n-avatar>
             </n-dropdown>
         </div>
+
+        <!-- 频道设置对话框 -->
+        <n-modal
+            v-model:show="showChannelSettings"
+            preset="card"
+            title="频道设置"
+            :style="{ width: '650px' }"
+            :bordered="false"
+            :segmented="{ content: true, footer: true }"
+        >
+            <EditChannel />
+        </n-modal>
     </div>
 </template>
 
 <script setup lang="ts">
-import { computed, h } from 'vue';
+import { computed, h, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { NIcon, NAvatar, NButton, NDropdown } from 'naive-ui';
+import { NIcon, NAvatar, NButton, NDropdown, NModal } from 'naive-ui';
 import { useUserStore } from '@/store/user';
 import { useThemeStore } from '@/store/theme';
-import { LogOutOutline as LogoutIcon, PersonOutline } from '@vicons/ionicons5'
+import { LogOutOutline as LogoutIcon, PersonOutline, SettingsOutline } from '@vicons/ionicons5'
 import { Moon, Sunny } from '@vicons/ionicons5'
+import EditChannel from '@/components/EditChannel.vue'
 
 const userStore = useUserStore()
 const themeStore = useThemeStore()
 const router = useRouter()
+
+// 控制频道设置对话框显示
+const showChannelSettings = ref(false)
 
 // 计算当前主题图标 - 暗色模式显示太阳图标，亮色模式显示月亮图标
 const currentThemeIcon = computed(() => {
@@ -56,6 +72,11 @@ const currentThemeIcon = computed(() => {
 })
 
 const options = computed(() => [
+    {
+        label: '频道设置',
+        key: 'channel-settings',
+        icon: () => h(NIcon, { component: SettingsOutline })
+    },
     {
         label: '退出登录',
         key: 'logout',
@@ -68,6 +89,8 @@ const handleSelect = (key: string) => {
     if (key === 'logout') {
         userStore.logout()
         router.push('/login')
+    } else if (key === 'channel-settings') {
+        showChannelSettings.value = true
     }
 }
 
@@ -94,6 +117,11 @@ const toggleTheme = () => {
     align-items: center;
     gap: var(--gap-medium);
     text-decoration: none;
+    transition: transform 0.2s ease;
+}
+
+.logo-container:hover {
+    transform: scale(1.05);
 }
 
 .logo-icon {
@@ -172,12 +200,13 @@ const toggleTheme = () => {
 
 /* 减少动画模式 */
 @media (prefers-reduced-motion: reduce) {
-
+    .logo-container,
     .header-avatar,
     .theme-toggle-btn {
         transition: none;
     }
 
+    .logo-container:hover,
     .header-avatar:hover,
     .theme-toggle-btn:hover {
         transform: none;

@@ -55,7 +55,9 @@ import type { FileItem, FileChunk } from '@/types/file'
 import { useUserStore } from '@/store/user'
 import { getFilesByParentId, renameFile, moveFile, createFile, deleteFile, deleteFileChunks, getFileChunks } from '@/api/file'
 import { refreshToken } from '@/api/auth'
+import { getOneChannel } from '@/api/channel'
 import { useBreadcrumbStore } from '@/store/breadcrumb'
+import { useChannelStore } from '@/store/channel'
 import { onMounted, ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useMessage, useLoadingBar, NModal } from 'naive-ui'
@@ -70,6 +72,7 @@ const route = useRoute()  // 添加 route 引用
 const breadcrumbStore = useBreadcrumbStore()
 const message = useMessage()
 const loadingBar = useLoadingBar();
+const channelStore = useChannelStore()
 
 // 判断是否来自登录页面
 const isFromLogin = computed(() => {
@@ -113,9 +116,11 @@ onMounted(() => {
     } else if (userStore.getKeepAlive) {
       // 刷新 Token
       refreshToken()
+      loadFiles(null)
     }
+  } else {
+    loadFiles(null)
   }
-  loadFiles(null)
 })
 
 const loadingStatus = (status: boolean) => {
@@ -147,7 +152,7 @@ const refreshFileList = async () => {
   const refreshTarget = breadcrumbStore.lastCrumbTypeDir()
   try {
     loadingStatus(true)
-    await loadFiles(refreshTarget?.id)
+    await loadFilesWithoutChannel(refreshTarget?.id)
   } catch (error) {
     console.error('Failed to load files:', error)
   } finally {
@@ -155,8 +160,13 @@ const refreshFileList = async () => {
   }
 }
 
-// 加载文件列表的通用方法
 const loadFiles = async (parentId: string | null = null) => {
+  loadFilesWithoutChannel(parentId)
+  loadChannels()
+}
+
+// 加载文件列表的通用方法
+const loadFilesWithoutChannel = async (parentId: string | null = null) => {
   try {
     // request.ts 在成功时直接返回 data 字段的数据（即 FileItem[]）
     const files = await getFilesByParentId(parentId)
@@ -165,6 +175,12 @@ const loadFiles = async (parentId: string | null = null) => {
     console.error('API request failed:', error)
     fileList.value = []
   }
+}
+
+// 加载可用的 Channel
+const loadChannels = async () => {
+  const channel = await getOneChannel()
+  channelStore.setChannel(channel.channel_id, channel.name, channel.message_id, channel.limited)
 }
 
 // 处理上传完成事件
@@ -265,13 +281,11 @@ const handleMoveConfirm = async (newParentId: string) => {
 
     // 调用移动文件API
     const updatedFile = await moveFile(currentOperationFile.value.id, newParentId)
-    // 这里暂时模拟移动操作
-    console.log('移动文件:', currentOperationFile.value.name, '到目录:', newParentId)
 
     // 重新加载当前目录的文件列表
     const lastCrumb = breadcrumbStore.lastCrumb()
     const currentParentId = lastCrumb?.id || null
-    await loadFiles(currentParentId)
+    await loadFilesWithoutChannel(currentParentId)
 
     message.success('移动文件成功')
   } catch (error) {
@@ -371,7 +385,13 @@ const handleDeleteConfirm = async (deleteFromTelegram: boolean) => {
               continue;
             }
 
-            await deleteFileChunks(validChunks)
+            // 从 channel store 获取 channelId
+            const channel = channelStore.getChannel;
+            if (!channelStore.hasChannel || typeof channel !== 'object' || !('channelId' in channel)) {
+              throw new Error('Channel not available');
+            }
+            const channelId = channel.channelId;
+            await deleteFileChunks(channelId, validChunks)
             processedChunks.value += batch.length
             deleteProgress.value = Math.round((processedChunks.value / totalChunks.value) * 100)
 
@@ -394,7 +414,7 @@ const handleDeleteConfirm = async (deleteFromTelegram: boolean) => {
     // 重新加载当前目录的文件列表
     const lastCrumb = breadcrumbStore.lastCrumbTypeDir()
     const currentParentId = lastCrumb?.id || null
-    await loadFiles(currentParentId)
+    await loadFilesWithoutChannel(currentParentId)
 
   } catch (error) {
     console.error('删除文件失败:', error)

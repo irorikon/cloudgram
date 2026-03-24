@@ -58,7 +58,6 @@ export const useBreadcrumbStore = defineStore('breadcrumb', {
                 const newLength = Math.max(1, index + 1);
                 this.crumbs = this.crumbs.slice(0, newLength);
             }
-            console.log(this.crumbs);
         },
         // 根据索引删除面包屑（保护根目录）
         removeCrumbByIndex(index: number) {

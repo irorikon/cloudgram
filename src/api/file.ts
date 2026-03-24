@@ -87,8 +87,9 @@ export function deleteFile(fileId: string, recursive: boolean = false) {
  * @param fileChunks 文件分片数据数组
  * @returns 成功删除的分片ID数组
  */
-export function deleteFileChunks(fileChunks: any[]) {
+export function deleteFileChunks(channelId: string, fileChunks: any[]) {
   return request.post('/api/chunk/delete', {
+    channelId,
     fileChunks
   })
 }

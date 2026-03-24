@@ -90,6 +90,10 @@ chunk.post('/delete', async (c) => {
     if (!body || typeof body !== "object") {
         return c.json(error("Request body must be valid JSON"), 400);
     }
+    const channelId = typeof body.channelId === "string" ? body.channelId : null;
+    if (!channelId) {
+        return c.json(error("Invalid request body"), 400);
+    }
     const fileChunks = Array.isArray(body.fileChunks) ? body.fileChunks : null;
     if (!fileChunks) {
         return c.json(error("Invalid request body"), 400);
@@ -98,7 +102,7 @@ chunk.post('/delete', async (c) => {
     if (fileChunks.length > 20 || fileChunks.length < 1) {
         return c.json(error("Invalid request body"), 400);
     }
-    return c.json(success(await deleteChunksWithTelegramFile(fileChunks, c.env.TELEGRAM_BOT_TOKEN, c.env.TELEGRAM_CHAT_ID)), 200);
+    return c.json(success(await deleteChunksWithTelegramFile(fileChunks, c.env.TELEGRAM_BOT_TOKEN, channelId)), 200);
 });
 
 export default chunk;

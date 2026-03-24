@@ -5,7 +5,7 @@ import type { FileRecord } from '../types/file';
 
 // 公共 SELECT 字段列表，统一维护避免各函数重复拼写
 const FILE_BASE_SELECT =
-    'SELECT id, name, parent_id, is_dir, size, created_at, updated_at, mime_type FROM files';
+    'SELECT id, name, parent_id, is_dir, size, channel_id, mime_type, created_at, updated_at FROM files';
 const FILE_SELECT_SQL = `${FILE_BASE_SELECT} WHERE id = ?`;
 
 // FileRecord 类型已在 '../types/database' 中定义，无需重复声明
@@ -20,6 +20,7 @@ function normalizeFileRecord(record: FileRecord): FileRecord {
     return {
         id: record.id,
         name: record.name,
+        channel_id: record.channel_id,
         parent_id: record.parent_id,
         is_dir: Boolean(record.is_dir), // 确保转换为布尔值
         size: record.size ?? null,
@@ -98,7 +99,9 @@ export async function createFile(
     parentId: string | null,
     is_dir: number | boolean,
     size: number | null = null,
-    mime_type: string | null = null): Promise<FileRecord> {
+    channelId: string | null = null,
+    mime_type: string | null = null
+): Promise<FileRecord> {
     // 参数校验
     if (!name || typeof name !== 'string' || name.trim() === '') {
         throw new Error('Invalid file name');
@@ -115,8 +118,8 @@ export async function createFile(
     await transaction(db, async (tx) => {
         const id = crypto.randomUUID(); // Workers 原生支持，零依赖
         const insertSql =
-            'INSERT INTO files (id, name, parent_id, is_dir, size, mime_type, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)';
-        await tx.exec(insertSql, [id, name.trim(), normalizedParentId, is_dir, size || 0, mime_type]);
+            'INSERT INTO files (id, name, parent_id, is_dir, size, mime_type, channel_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)';
+        await tx.exec(insertSql, [id, name.trim(), normalizedParentId, is_dir, size || 0, mime_type, channelId]);
     });
 
     const created = await queryOne<FileRecord>(db, `${FILE_BASE_SELECT} WHERE name = ? AND parent_id IS ?`, [name.trim(), normalizedParentId]);

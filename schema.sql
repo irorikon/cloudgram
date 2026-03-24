@@ -6,12 +6,14 @@ CREATE TABLE IF NOT EXISTS files (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     parent_id TEXT,
+    channel_id TEXT,
     is_dir BOOLEAN NOT NULL,
     size INTEGER NOT NULL DEFAULT 0,
     mime_type TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(parent_id) REFERENCES files(id) ON DELETE CASCADE
+    FOREIGN KEY(parent_id) REFERENCES files(id) ON DELETE CASCADE,
+    FOREIGN KEY(channel_id) REFERENCES channels(channel_id) ON DELETE SET NULL
 );
 
 -- 自动更新 updated_at 字段的触发器
@@ -19,6 +21,23 @@ CREATE TRIGGER IF NOT EXISTS update_files_updated_at
     AFTER UPDATE ON files
 BEGIN
     UPDATE files SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
+
+-- 频道表
+CREATE TABLE IF NOT EXISTS channels (
+    channel_id TEXT NOT NULL PRIMARY KEY,
+    name TEXT NOT NULL,
+    limited BOOLEAN NOT NULL,
+    message_id INTEGER NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 自动更新 channels 表 updated_at 字段的触发器
+CREATE TRIGGER IF NOT EXISTS update_channels_updated_at
+    AFTER UPDATE ON channels
+BEGIN
+    UPDATE channels SET updated_at = CURRENT_TIMESTAMP WHERE channel_id = NEW.channel_id;
 END;
 
 -- 文件分片表
