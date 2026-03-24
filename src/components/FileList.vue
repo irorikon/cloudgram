@@ -1,8 +1,7 @@
 <template>
   <div class="file-list" @contextmenu.prevent="handleGlobalContextMenu">
     <n-data-table ref="dataTableRef" :columns="columns" :data="files" :row-key="getRowKey" :bordered="false"
-      :loading="loading" size="medium" :scroll-x="800" @update:checked-row-keys="handleSelectionChange" virtual-scroll
-      :min-height="minHeight" />
+      :loading="loading" size="medium" @update:checked-row-keys="handleSelectionChange" :min-height="minHeight" />
   </div>
 
   <!-- 右键菜单 -->
@@ -178,14 +177,15 @@ const updateContainerHeight = () => {
   const viewportHeight = window.innerHeight;
 
   // 计算已知组件占用的高度
-  const headerHeight = 60;
+  const headerHeight = 64;
   const breadcrumbHeight = 40;
-  const footerHeight = 60;
-  const margins = 32;
+  const footerHeight = 64;
+  const margins = 40;
+  const filelistheader = 50;
 
   // 计算文件列表可用高度
   const availableHeight = Math.max(
-    viewportHeight - headerHeight - breadcrumbHeight - footerHeight - margins,
+    viewportHeight - headerHeight - breadcrumbHeight - footerHeight - margins - filelistheader,
     300
   );
 
