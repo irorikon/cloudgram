@@ -1,42 +1,82 @@
-# cloudgram
+# CloudGram
 
-This template should help get you started developing with Vue 3 in Vite.
+[![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-orange.svg)](https://workers.cloudflare.com/) [![Telegram Bot API](https://img.shields.io/badge/Telegram-Bot%20API-blue.svg)](https://core.telegram.org/bots/api)
 
-## Recommended IDE Setup
+CloudGram 是一个基于 Cloudflare Workers 和 Telegram Bot API 的云文件管理系统
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+## 🚀 快速开始
 
-## Recommended Browser Setup
+### 前置条件
 
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
+- [Node.js](https://nodejs.org/) (v16 或更高版本)
+- [npm](https://www.npmjs.com/) 或 [yarn](https://yarnpkg.com/)
+- [Cloudflare 账户](https://dash.cloudflare.com/sign-up)
+- [Telegram Bot](https://core.telegram.org/bots#how-do-i-create-a-bot) 和一个用于存储文件的 Telegram 群组/频道,把机器人加入到频道并将其作为管理员
 
-## Type Support for `.vue` Imports in TS
+### 安装
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
+1. **克隆仓库**
 
-## Customize configuration
+   ```sh
+   git clone https://github.com/irorikon/cloudgram.git
+   cd cloudgram
+   ```
 
-See [Vite Configuration Reference](https://vite.dev/config/).
+2. **安装依赖**
 
-## Project Setup
+   ```sh
+   npm install
+   ```
+
+3. **配置环境**
+
+   - 复制示例配置文件并进行编辑：
+
+   ```sh
+   cp wrangler.jsonc.example wrangler.jsonc
+   ```
+
+   - 编辑 `wrangler.jsonc` 文件，填入以下信息：
+     - JWT 密钥
+     - Telegram Bot Token
+     - Telegram Chat ID
+     - 管理员用户名和密码
+    - 本项目只支持单用户，没有用户注册功能
+
+4. **初始化数据库**
+
+   ```sh
+   npx wrangler d1 create cloudgram-db
+   ```
+
+   将生成的数据库 ID 添加到 `wrangler.jsonc` 文件中。
+
+   ```sh
+   # 本地执行建表语句
+   npx wrangler d1 execute cloudgram-db --file=schema.sql
+
+   # 远端执行建表语句
+   npx wrangler d1 execute cloudgram-db --file=schema.sql --remote
+   ```
+
+### 本地开发
+
+1. **启动开发服务器**
+
+   ```sh
+   npm run dev
+   # 或
+   npx wrangler dev
+   ```
+
+2. **访问前端**
+
+   打开浏览器访问 <http://localhost:5173>
+
+### 部署到 Cloudflare Workers
 
 ```sh
-npm install
-```
-
-### Compile and Hot-Reload for Development
-
-```sh
-npm run dev
-```
-
-### Type-Check, Compile and Minify for Production
-
-```sh
-npm run build
+npm run deploy
+# 或
+npx wrangler deploy
 ```
