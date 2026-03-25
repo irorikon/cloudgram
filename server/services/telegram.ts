@@ -1,5 +1,6 @@
 // Telegram 服务模块
 // 提供 Telegram Bot API 文件存储功能
+import { stream } from 'hono/streaming';
 import { TelegramResponse } from '../types/telegram';
 
 /**
@@ -88,7 +89,8 @@ export async function uploadFileToTelegram(
     
     // 直接将流附加到 FormData - Cloudflare Workers 支持此操作
     // 使用类型断言来绕过 TypeScript 的类型检查限制
-    formData.append('document', checkedStream as unknown as Blob, fileName);
+    const blob = await new Response(checkedStream).blob();
+    formData.append('document', blob, fileName);
 
     // isChunked 场景下禁用内容类型检测，防止 Telegram 拒绝非标准分片文件名
     if (isChunked) {
