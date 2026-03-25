@@ -30,7 +30,7 @@
 	//   wrangler secret put JWT_SECRET
 	//   wrangler secret put TELEGRAM_BOT_TOKEN
 	"vars": {
-		"APP_VERSION": "0.6.1",
+		"APP_VERSION": "0.6.5",
 		"AUTH_USERNAME": "admin"
 	}
 	/**
