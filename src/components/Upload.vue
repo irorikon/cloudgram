@@ -64,7 +64,7 @@ interface Emits {
 const emit = defineEmits<Emits>();
 
 // 定义常量
-const CHUNK_SIZE = 20 * 1024 * 1024; // 20MB 分片大小
+const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB 分片大小
 
 // 组件引用
 const message = useMessage();
