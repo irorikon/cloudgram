@@ -78,6 +78,9 @@ if (!channelStore.hasChannel || typeof channel !== 'object' || !('channelId' in 
 }
 const channelId = channel.channelId;
 
+// 定义 messageId
+const messageId = ref<number>(0);
+
 // 添加文件列表状态管理（内部使用）
 const fileListRef = ref<UploadFileInfo[]>([]);
 
@@ -308,8 +311,10 @@ const uploadSmallFileWithId = async (file: File, uploadId: string, parentId: str
     }
 
     // 上传文件分片 - request.upload 已经自动返回 data 字段
-    await uploadChunk(uploadId, 1, 0, file.size, file, channelId);
-
+    const response = await uploadChunk(uploadId, 1, 0, file.size, file, channelId);
+    if (response !== null){
+      messageId.value = response.telegramMessageId;
+    }
     // 更新进度为 100%
     if (uploadFileInfo) {
       uploadFileInfo.percentage = 100;
@@ -323,7 +328,8 @@ const uploadSmallFileWithId = async (file: File, uploadId: string, parentId: str
       file.size,
       file.type || 'application/octet-stream',
       1,
-      channelId
+      channelId,
+      messageId.value
     );
 
     message.success(`文件 ${file.name} 上传成功`);
@@ -353,7 +359,7 @@ const uploadLargeFileWithId = async (file: File, uploadId: string, parentId: str
       const end = Math.min(start + CHUNK_SIZE, file.size);
       const chunk = file.slice(start, end);
 
-      await uploadChunk(
+      const response = await uploadChunk(
         uploadId,
         totalChunks,
         chunkIndex,
@@ -361,6 +367,9 @@ const uploadLargeFileWithId = async (file: File, uploadId: string, parentId: str
         new File([chunk], `${file.name}.${String(chunkIndex + 1).padStart(3, '0')}`, { type: file.type }),
         channelId
       );
+      if (response !== null){
+        messageId.value = response.telegramMessageId;
+      }
 
       // 更新进度
       if (uploadFileInfo) {
@@ -376,7 +385,8 @@ const uploadLargeFileWithId = async (file: File, uploadId: string, parentId: str
       file.size,
       file.type || 'application/octet-stream',
       totalChunks,
-      channelId
+      channelId,
+      messageId.value
     );
 
     message.success(`文件 ${file.name} 上传成功`);

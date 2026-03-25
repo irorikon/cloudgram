@@ -3,7 +3,6 @@
 export type FileRecord = {
     id: string;
     name: string;
-    channel_id: string | null;
     parent_id: string | null;
     is_dir: number | boolean;
     size: number | null;

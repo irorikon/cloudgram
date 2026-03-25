@@ -60,13 +60,6 @@ export async function deleteTGChannel(db: D1Database, channelId: string): Promis
         throw new Error('Invalid channel id');
     }
 
-    // 校验该 channel 下是否存在文件/文件夹
-    const fileExists = await queryOne<ChannelRecord>(db, "SELECT id FROM files WHERE channel_id = ? LIMIT 1", [channelId.trim()]);
-
-    if (fileExists) {
-        return;
-    }
-
     await transaction(db, async (tx) => {
         await tx.exec('DELETE FROM channels WHERE channel_id = ?', [channelId]);
     });

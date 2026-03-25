@@ -6,14 +6,12 @@ CREATE TABLE IF NOT EXISTS files (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     parent_id TEXT,
-    channel_id TEXT,
     is_dir BOOLEAN NOT NULL,
     size INTEGER NOT NULL DEFAULT 0,
     mime_type TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(parent_id) REFERENCES files(id) ON DELETE CASCADE,
-    FOREIGN KEY(channel_id) REFERENCES channels(channel_id) ON DELETE SET NULL
+    FOREIGN KEY(parent_id) REFERENCES files(id) ON DELETE CASCADE
 );
 
 -- 自动更新 updated_at 字段的触发器

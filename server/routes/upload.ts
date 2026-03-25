@@ -135,6 +135,10 @@ upload.post("/merge", async (c) => {
     if (!channelId) {
         return c.json(error("Invalid channelId"), 400);
     }
+    const messageId = typeof body.messageId === "number" ? body.messageId : null;
+    if (!messageId) {
+        return c.json(error("Invalid messageId"), 400);
+    }
     const filename = typeof body.filename === "string" ? body.filename : null;
     if (!filename) {
         return c.json(error("Invalid filename"), 400);
@@ -161,9 +165,10 @@ upload.post("/merge", async (c) => {
             parentId,
             false, // is_dir = false (file)
             size,
-            channelId,
             mimeType || "application/octet-stream"
         );
+
+        await updateTGChannelMessageId(c.env.CloudGramDB, channelId, messageId, true);
 
         // 转移临时分片到正式文件分片表
         await transferTempChunksToFile(c.env.CloudGramDB, uploadId, file.id);

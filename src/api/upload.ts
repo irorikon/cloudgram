@@ -63,7 +63,7 @@ export async function uploadChunk(uploadId: string, totalChunks: number, chunkIn
 /**
  * 合并文件
  */
-export function mergeFile(uploadId: string, filename: string, parentId: string | null, size: number, mimeType: string, uploadedChunks: number, channelId: string) {
+export function mergeFile(uploadId: string, filename: string, parentId: string | null, size: number, mimeType: string, uploadedChunks: number, channelId: string, messageId: number) {
   return request.post('/api/upload/merge', {
     uploadId,
     filename,
@@ -71,7 +71,8 @@ export function mergeFile(uploadId: string, filename: string, parentId: string |
     size,
     mimeType,
     uploadedChunks,
-    channelId
+    channelId,
+    messageId
   })
 }
 
