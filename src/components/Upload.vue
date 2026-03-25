@@ -53,6 +53,7 @@ import { useBreadcrumbStore } from '@/store/breadcrumb';
 import { useChannelStore } from '@/store/channel';
 import { uploadChunk, mergeFile, cleanupUploadSession } from '@/api/upload';
 import { exists } from '@/api/file';
+import { timeout } from 'hono/timeout';
 
 // 定义组件事件
 interface Emits {
@@ -374,6 +375,9 @@ const uploadLargeFileWithId = async (file: File, uploadId: string, parentId: str
       // 更新进度
       if (uploadFileInfo) {
         uploadFileInfo.percentage = Math.min(Math.floor(((chunkIndex + 1) / totalChunks) * 100), 100);
+      }
+      if (chunkIndex < totalChunks - 1) {
+        await new Promise(resolve => setTimeout(resolve, 1000)); // 1s间隔
       }
     }
 

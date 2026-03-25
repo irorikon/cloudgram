@@ -65,39 +65,30 @@ export async function uploadFileToTelegram(
     // Telegram Bot API 单文件上传上限为 50MB, 下载上限为 20MB，分片上传时需遵守下载上限
     const MAX_SIZE = 20 * 1024 * 1024;
 
-    // 分块读取 ReadableStream，边读边累计大小
-    // 相比 new Response(stream).arrayBuffer()，可在超限时立即取消读取，避免无效内存占用
-    const chunks: Uint8Array[] = [];
+    // 使用 TransformStream 实现流式大小检查
     let totalSize = 0;
-    const reader = fileStream.getReader();
-    try {
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            totalSize += value.byteLength;
+    const sizeCheckTransform = new TransformStream<Uint8Array, Uint8Array>({
+        transform(chunk, controller) {
+            totalSize += chunk.byteLength;
             if (totalSize > MAX_SIZE) {
-                throw new Error(`File size exceeds the 20MB limit imposed by Telegram Bot API`);
+                controller.error(new Error(`File size exceeds the 20MB limit imposed by Telegram Bot API`));
+                return;
             }
-            chunks.push(value);
+            controller.enqueue(chunk);
         }
-    } finally {
-        // 无论正常结束还是抛出异常，都释放流读取锁
-        reader.releaseLock();
-    }
+    });
 
-    // 将所有分块合并为单个 Uint8Array，避免 ArrayBuffer 拼接的多次内存分配
-    const merged = new Uint8Array(totalSize);
-    let offset = 0;
-    for (const chunk of chunks) {
-        merged.set(chunk, offset);
-        offset += chunk.byteLength;
-    }
+    // 将原始流通过大小检查 TransformStream
+    const checkedStream = fileStream.pipeThrough(sizeCheckTransform);
 
     // 构造 FormData 以符合 Telegram Bot API 的文件上传要求
-    // Telegram sendDocument 接受 multipart/form-data，文件字段名为 "document"
+    // 在 Cloudflare Workers 环境中，FormData 原生支持 ReadableStream
     const formData = new FormData();
     formData.append('chat_id', chatId);
-    formData.append('document', new Blob([merged]), fileName);
+    
+    // 直接将流附加到 FormData - Cloudflare Workers 支持此操作
+    // 使用类型断言来绕过 TypeScript 的类型检查限制
+    formData.append('document', checkedStream as unknown as Blob, fileName);
 
     // isChunked 场景下禁用内容类型检测，防止 Telegram 拒绝非标准分片文件名
     if (isChunked) {
